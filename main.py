@@ -12,12 +12,23 @@ from TwitterAPI import TwitterAPI
 GOOGLE_URL_AUTOCOMPLETE = 'https://maps.googleapis.com/maps/api/place/autocomplete/json'
 GOOGLE_URL_DETAILS = 'https://maps.googleapis.com/maps/api/place/details/json'
 
-GOOGLE_MAPS_API_KEY = os.environ['GOOGLE_MAPS_API_KEY']
+try:
+    GOOGLE_MAPS_API_KEY = os.environ['GOOGLE_MAPS_API_KEY']
+except KeyError:
+    print 'Google maps API key not found.'
+    GOOGLE_MAPS_API_KEY = None
 
-TWITTER_CONSUMER_KEY = None
-TWITTER_CONSUMER_SECRET = None
-TWITTER_ACCESS_TOKEN_KEY = None
-TWITTER_ACCESS_TOKEN_SECRET = None
+try:
+    TWITTER_CONSUMER_KEY = os.environ['TWITTER_CONSUMER_KEY']
+    TWITTER_CONSUMER_SECRET = os.environ['TWITTER_CONSUMER_SECRET']
+    TWITTER_ACCESS_TOKEN_KEY = os.environ['TWITTER_ACCESS_TOKEN_KEY']
+    TWITTER_ACCESS_TOKEN_SECRET = os.environ['TWITTER_ACCESS_TOKEN_SECRET']
+except KeyError:
+    print 'Twitter API key not found.'
+    TWITTER_CONSUMER_KEY = None
+    TWITTER_CONSUMER_SECRET = None
+    TWITTER_ACCESS_TOKEN_KEY = None
+    TWITTER_ACCESS_TOKEN_SECRET = None
 
 START_TIME = Time('2000-01-01 12:00:00.0', scale='utc')
 
@@ -30,14 +41,10 @@ SimbadQuerier.add_votable_fields('otype')
 class Bot(object):
     """The WhatsAboveMe twitterbot."""
 
-    def __init__(self, 
-                 consumer_key=TWITTER_CONSUMER_KEY,
-                 consumer_secret=TWITTER_CONSUMER_SECRET,
-                 access_token_key=TWITTER_ACCESS_TOKEN_KEY,
-                 access_token_secret=TWITTER_ACCESS_TOKEN_SECRET):
+    def __init__(self):
         self.api = TwitterAPI(
-            consumer_key, consumer_secret,
-            access_token_key, access_token_secret)
+            TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET,
+            TWITTER_ACCESS_TOKEN_KEY, TWITTER_ACCESS_TOKEN_SECRET)
         self.stream = None
 
     def activate(self):
