@@ -67,12 +67,14 @@ class Bot(object):
             message = '{}, a {}, is above you.'.format(
                 obj['name'], obj['type'])
         reply_text = '@{} {}'.format(tweet['user']['screen_name'], message)
+        print 'Sending reply: {}'.format(reply_text)
         update = self.api.request(
             'statuses/update', 
             {'status': reply_text,
              'in_reply_to_status_id': tweet['id']})
 
     def get_location(self, name):
+        print 'Searching for location: {}'.format(name)
         req_id = requests.get(
             GOOGLE_URL_AUTOCOMPLETE,
             params={'input':name, 'key':GOOGLE_MAPS_API_KEY})
@@ -80,26 +82,33 @@ class Bot(object):
         if result['status'] == 'ZERO_RESULTS':
             raise LocationNotFoundError(name)
         place_id = result['predictions'][0]['place_id']
+        print 'Place ID found: {}'.format(place_id)
         req_loc = requests.get(
             GOOGLE_URL_DETAILS,
             params={'placeid': place_id, 'key':GOOGLE_MAPS_API_KEY})
-        return req_loc.json()['result']['geometry']['location']
+        location = req_loc.json()['result']['geometry']['location']
+        print 'Location found: {}, {}'.format(location['lng'], location['lat'])
+        return location
 
     def get_ra_dec(self, location):
         gst = (18.697374558 + 24.06570982441908 * (Time.now() - START_TIME).value)
         ra = (gst * 15.0 + location['lng']) % 360                                                      
-        dec = location['lat']                           
+        dec = location['lat']
+        print 'Coordinates found: {}, {}'.format(ra, dec)
         return {'ra': ra, 'dec': dec}
 
     def get_object(self, coords_dict):
         coords = coordinates.SkyCoord(
             ra=coords_dict['ra'], dec=coords_dict['dec'], unit=(u.deg, u.deg))
         simbad_result = SimbadQuerier.query_region(coords, radius=1.0*u.deg)
+        print 'Simbad results received:'
+        print simbad_result
         coords_result = coordinates.SkyCoord(
             ra=simbad_result['RA'], dec=simbad_result['DEC'], unit=(u.hour, u.deg))
         closest_object = simbad_result[np.argmin(coords_result)]
         object_name = closest_object['MAIN_ID']
         object_type = closest_object['OTYPE']
+        print 'Object found: {}, {}'.format(object_name, object_type)
         return {'name': object_name, 'type': object_type}
 
 
@@ -113,5 +122,5 @@ class LocationNotFoundError(BotError):
 if __name__ == '__main__':
     bot = Bot()
     bot.activate()
-    
+
 
