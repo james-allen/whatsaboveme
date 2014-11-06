@@ -1,4 +1,5 @@
 import os
+import re
 
 import numpy as np
 import requests
@@ -100,12 +101,17 @@ class Bot(object):
     def get_object(self, coords_dict):
         coords = coordinates.SkyCoord(
             ra=coords_dict['ra'], dec=coords_dict['dec'], unit=(u.deg, u.deg))
-        simbad_result = SimbadQuerier.query_region(coords, radius=1.0*u.deg)
+        simbad_result = SimbadQuerier.query_region(coords, radius=0.25*u.deg)
         print 'Simbad results received:'
         print simbad_result
+        keep = np.array([bool(re.match(r'.+ .+ .+\..+', line['RA'])) and
+                         bool(re.match(r'.+ .+ .+\..+', line['DEC']))
+                         for line in simbad_result])
+        trimmed_result = simbad_result[keep]
         coords_result = coordinates.SkyCoord(
-            ra=simbad_result['RA'], dec=simbad_result['DEC'], unit=(u.hour, u.deg))
-        closest_object = simbad_result[np.argmin(coords_result)]
+            ra=trimmed_result['RA'], dec=trimmed_result['DEC'],
+            unit=(u.hour, u.deg))
+        closest_object = trimmed_result[np.argmin(coords_result)]
         object_name = closest_object['MAIN_ID']
         object_type = closest_object['OTYPE']
         print 'Object found: {}, {}'.format(object_name, object_type)
