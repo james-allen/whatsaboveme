@@ -1,0 +1,13 @@
+TwitterAPI==2.2.3
+astropy==0.4.1
+astroquery==0.2.1
+beautifulsoup4==4.3.2
+certifi==14.05.14
+html5lib==1.0b3
+keyring==4.0
+numpy==1.8.2
+oauthlib==0.6.3
+requests==2.4.0
+requests-oauthlib==0.4.1
+six==1.7.3
+wsgiref==0.1.2
