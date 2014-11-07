@@ -50,7 +50,7 @@ SimbadQuerier.add_votable_fields('otype')
 class Bot(object):
     """The WhatsAboveMe twitterbot."""
 
-    def __init__(self, n_pix_image=400, arrow_filename='arrow.png',
+    def __init__(self, n_pix_image=400, arrow_filename='/app/arrow.png',
                  arrow_offset=(189, 130)):
         self.api = TwitterAPI(
             TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET,
