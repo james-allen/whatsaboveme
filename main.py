@@ -72,7 +72,7 @@ class Bot(object):
             return
         ra_dec = self.get_ra_dec(location)
         obj = self.get_object(ra_dec)
-        message = '{}, a {}, is above you.'.format(
+        message = '{}, a {}, is above you right now.'.format(
             obj['name'], obj['type'])
         image = self.get_sky_image(obj['coords'])
         reply_text = '@{} {}'.format(tweet['user']['screen_name'], message)
