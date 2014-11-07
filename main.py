@@ -69,20 +69,21 @@ class Bot(object):
         try:
             location = self.get_location(text)
         except LocationNotFoundError:
-            message = "I'm sorry, I can't find your location."
-        else:
-            ra_dec = self.get_ra_dec(location)
-            obj = self.get_object(ra_dec)
-            message = '{}, a {}, is above you.'.format(
-                obj['name'], obj['type'])
+            return
+        ra_dec = self.get_ra_dec(location)
+        obj = self.get_object(ra_dec)
+        message = '{}, a {}, is above you.'.format(
+            obj['name'], obj['type'])
+        image = self.get_sky_image(obj['coords'])
         reply_text = '@{} {}'.format(tweet['user']['screen_name'], message)
         print 'Sending reply: {}'.format(reply_text)
-        self.api.request(
-            'statuses/update', 
-            {'status': reply_text,
-             'in_reply_to_status_id': tweet['id']})
+        self.tweet_image(reply_text, image, in_reply_to=tweet)
+        # self.api.request(
+        #     'statuses/update', 
+        #     {'status': reply_text,
+        #      'in_reply_to_status_id': tweet['id']})
 
-    def tweet_image(self, status, image):
+    def tweet_image(self, status, image, in_reply_to=None):
         """Tweet with an image. `image` is a PIL Image."""
         image_bytes = image.tobytes('jpeg', image.mode)
         response = requests.post(
@@ -91,10 +92,13 @@ class Bot(object):
             auth=self.api.auth)
         response_json = json.loads(response.text)
         media_id = response_json['media_id_string']
+        payload = {'status': status,
+                   'media_ids': media_id}
+        if in_reply_to is not None:
+            payload['in_reply_to_status_id'] = in_reply_to['id']
         self.api.request(
             'statuses/update',
-            {'status': status,
-             'media_ids': media_id})
+            payload)
 
     def get_location(self, name):
         print 'Searching for location: {}'.format(name)
