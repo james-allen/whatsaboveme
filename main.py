@@ -19,7 +19,7 @@ GOOGLE_URL_DETAILS = 'https://maps.googleapis.com/maps/api/place/details/json'
 
 TWITTER_URL_MEDIA_UPLOAD = 'https://upload.twitter.com/1.1/media/upload.json'
 
-ALADIN_URL_IMAGE_BASE = 'http://alasky.u-strasbg.fr/cgi/portal/aladin/get-preview-img.py?pos={},{}'
+ALADIN_URL_IMAGE_BASE = 'http://alasky.u-strasbg.fr/cgi/portal/aladin/get-preview-img.py?pos={},{}&rgb=1'
 
 try:
     GOOGLE_MAPS_API_KEY = os.environ['GOOGLE_MAPS_API_KEY']
