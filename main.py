@@ -1,5 +1,6 @@
 import os
 import re
+import json
 
 import numpy as np
 import requests
@@ -12,6 +13,8 @@ from TwitterAPI import TwitterAPI
 
 GOOGLE_URL_AUTOCOMPLETE = 'https://maps.googleapis.com/maps/api/place/autocomplete/json'
 GOOGLE_URL_DETAILS = 'https://maps.googleapis.com/maps/api/place/details/json'
+
+TWITTER_URL_MEDIA_UPLOAD = 'https://upload.twitter.com/1.1/media/upload.json'
 
 try:
     GOOGLE_MAPS_API_KEY = os.environ['GOOGLE_MAPS_API_KEY']
@@ -69,10 +72,24 @@ class Bot(object):
                 obj['name'], obj['type'])
         reply_text = '@{} {}'.format(tweet['user']['screen_name'], message)
         print 'Sending reply: {}'.format(reply_text)
-        update = self.api.request(
+        self.api.request(
             'statuses/update', 
             {'status': reply_text,
              'in_reply_to_status_id': tweet['id']})
+
+    def tweet_image(self, status, image):
+        """Tweet with an image. `image` is a PIL Image."""
+        image_bytes = image.tobytes('jpeg', image.mode)
+        response = requests.post(
+            TWITTER_URL_MEDIA_UPLOAD,
+            files={'media': image_bytes},
+            auth=self.api.auth)
+        response_json = json.loads(response.text)
+        media_id = response_json['media_id_string']
+        self.api.request(
+            'statuses/update',
+            {'status': status,
+             'media_ids': media_id})
 
     def get_location(self, name):
         print 'Searching for location: {}'.format(name)
