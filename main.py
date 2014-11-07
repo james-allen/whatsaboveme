@@ -50,11 +50,15 @@ SimbadQuerier.add_votable_fields('otype')
 class Bot(object):
     """The WhatsAboveMe twitterbot."""
 
-    def __init__(self):
+    def __init__(self, n_pix_image=400, arrow_filename='arrow.png',
+                 arrow_offset=(189, 130)):
         self.api = TwitterAPI(
             TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET,
             TWITTER_ACCESS_TOKEN_KEY, TWITTER_ACCESS_TOKEN_SECRET)
         self.stream = None
+        self.n_pix_image = n_pix_image
+        self.arrow = Image.open(arrow_filename)
+        self.arrow_offset = arrow_offset
 
     def activate(self):
         """Switch the bot on."""
@@ -75,9 +79,10 @@ class Bot(object):
         message = '{}, a {}, is above you right now.'.format(
             obj['name'], obj['type'])
         image = self.get_sky_image(obj['coords'])
+        processed_image = self.process_image(image)
         reply_text = '@{} {}'.format(tweet['user']['screen_name'], message)
         print 'Sending reply: {}'.format(reply_text)
-        self.tweet_image(reply_text, image, in_reply_to=tweet)
+        self.tweet_image(reply_text, processed_image, in_reply_to=tweet)
         # self.api.request(
         #     'statuses/update', 
         #     {'status': reply_text,
@@ -150,6 +155,17 @@ class Bot(object):
         response = urllib.urlopen(aladin_url_image(coords))
         image = Image.open(BytesIO(response.read()))
         return image
+
+    def process_image(self, image):
+        """Crop the image and add an arrow pointing to the central object."""
+        size = image.size
+        image_crop = image.crop((
+            size[0]/2-self.n_pix_image/2,
+            size[1]/2-self.n_pix_image/2,
+            size[0]/2+self.n_pix_image/2,
+            size[1]/2+self.n_pix_image/2))
+        image_crop.paste(self.arrow, box=self.arrow_offset, mask=self.arrow)
+        return image_crop
 
 
 def aladin_url_image(coords):
