@@ -1,6 +1,8 @@
 import os
 import re
 import json
+import urllib
+from io import BytesIO
 
 import numpy as np
 import requests
@@ -10,11 +12,14 @@ import astropy.units as u
 # from astroquery.ned import Ned
 from astroquery.simbad import Simbad
 from TwitterAPI import TwitterAPI
+from PIL import Image
 
 GOOGLE_URL_AUTOCOMPLETE = 'https://maps.googleapis.com/maps/api/place/autocomplete/json'
 GOOGLE_URL_DETAILS = 'https://maps.googleapis.com/maps/api/place/details/json'
 
 TWITTER_URL_MEDIA_UPLOAD = 'https://upload.twitter.com/1.1/media/upload.json'
+
+ALADIN_URL_IMAGE_BASE = 'http://alasky.u-strasbg.fr/cgi/portal/aladin/get-preview-img.py?pos={},{}'
 
 try:
     GOOGLE_MAPS_API_KEY = os.environ['GOOGLE_MAPS_API_KEY']
@@ -128,11 +133,24 @@ class Bot(object):
         coords_result = coordinates.SkyCoord(
             ra=trimmed_result['RA'], dec=trimmed_result['DEC'],
             unit=(u.hour, u.deg))
-        closest_object = trimmed_result[np.argmin(coords_result)]
+        idx = np.argmin(coords_result)
+        closest_object = trimmed_result[idx]
         object_name = closest_object['MAIN_ID']
         object_type = closest_object['OTYPE']
         print 'Object found: {}, {}'.format(object_name, object_type)
-        return {'name': object_name, 'type': object_type}
+        return {'name': object_name, 'type': object_type,
+                'coords': coords_result[idx]}
+
+    def get_sky_image(self, coords):
+        """Return a jpeg PIL Image downloaded from Aladin."""
+        response = urllib.urlopen(aladin_url_image(coords))
+        image = Image.open(BytesIO(response.read()))
+        return image
+
+
+def aladin_url_image(coords):
+    """Return the URL to get an Aladin preview image."""
+    return ALADIN_URL_IMAGE_BASE.format(coords.ra.degree, coords.dec.degree)
 
 
 class BotError(Exception):
