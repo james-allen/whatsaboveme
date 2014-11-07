@@ -133,8 +133,7 @@ class Bot(object):
         coords = coordinates.SkyCoord(
             ra=coords_dict['ra'], dec=coords_dict['dec'], unit=(u.deg, u.deg))
         simbad_result = SimbadQuerier.query_region(coords, radius=0.25*u.deg)
-        print 'Simbad results received:'
-        print simbad_result
+        print 'Simbad results received: {} objects'.format(len(simbad_result))
         keep = np.array([bool(re.match(r'.+ .+ .+\..+', line['RA'])) and
                          bool(re.match(r'.+ .+ .+\..+', line['DEC']))
                          for line in simbad_result])
@@ -152,8 +151,10 @@ class Bot(object):
 
     def get_sky_image(self, coords):
         """Return a jpeg PIL Image downloaded from Aladin."""
+        print 'Downloading image'
         response = urllib.urlopen(aladin_url_image(coords))
         image = Image.open(BytesIO(response.read()))
+        print 'Image received'
         return image
 
     def process_image(self, image):
@@ -165,6 +166,7 @@ class Bot(object):
             size[0]/2+self.n_pix_image/2,
             size[1]/2+self.n_pix_image/2))
         image_crop.paste(self.arrow, box=self.arrow_offset, mask=self.arrow)
+        'Image processed'
         return image_crop
 
 
