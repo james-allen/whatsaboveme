@@ -159,7 +159,7 @@ class Bot(object):
     def process_image(self, image):
         """Crop the image and add an arrow pointing to the central object."""
         size = image.size
-        image_crop = image.crop((
+        image_crop = image.convert(mode='RGB').crop((
             size[0]/2-self.n_pix_image/2,
             size[1]/2-self.n_pix_image/2,
             size[0]/2+self.n_pix_image/2,
