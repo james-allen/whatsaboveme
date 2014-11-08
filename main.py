@@ -14,7 +14,7 @@ from astroquery.simbad import Simbad
 from TwitterAPI import TwitterAPI
 from PIL import Image
 
-from .otype import OTYPES_DICT
+from otype import OTYPES_DICT
 
 GOOGLE_URL_AUTOCOMPLETE = 'https://maps.googleapis.com/maps/api/place/autocomplete/json'
 GOOGLE_URL_DETAILS = 'https://maps.googleapis.com/maps/api/place/details/json'
