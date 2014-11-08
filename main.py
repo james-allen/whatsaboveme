@@ -14,6 +14,8 @@ from astroquery.simbad import Simbad
 from TwitterAPI import TwitterAPI
 from PIL import Image
 
+from .otype import OTYPES_DICT
+
 GOOGLE_URL_AUTOCOMPLETE = 'https://maps.googleapis.com/maps/api/place/autocomplete/json'
 GOOGLE_URL_DETAILS = 'https://maps.googleapis.com/maps/api/place/details/json'
 
@@ -76,8 +78,8 @@ class Bot(object):
             return
         ra_dec = self.get_ra_dec(location)
         obj = self.get_object(ra_dec)
-        message = '{}, a {}, is above you right now.'.format(
-            obj['name'], obj['type'])
+        message = '{}, {}, is above you right now.'.format(
+            obj['name'], OTYPES_DICT[obj['type']].tweet_name)
         image = self.get_sky_image(obj['coords'])
         processed_image = self.process_image(image)
         reply_text = '@{} {}'.format(tweet['user']['screen_name'], message)
