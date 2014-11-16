@@ -90,17 +90,15 @@ class Bot(object):
             return
         ra_dec = self.get_ra_dec(location)
         obj = self.get_object(ra_dec)
-        message = '{}, {}, is above you right now.'.format(
-            obj['name'], OTYPES_DICT[obj['type']].tweet_name)
         image = self.get_sky_image(obj['coords'])
         processed_image = self.process_image(image)
+        processed_image.filename = obj['name']+'.jpeg'
+        link = self.make_post_with_info(obj, text, processed_image)
+        message = '{}, {}, is above you right now. More info: {}'.format(
+            obj['name'], OTYPES_DICT[obj['type']].tweet_name, link)
         reply_text = '@{} {}'.format(tweet['user']['screen_name'], message)
         print 'Sending reply: {}'.format(reply_text)
         self.tweet_image(reply_text, processed_image, in_reply_to=tweet)
-        # self.api.request(
-        #     'statuses/update', 
-        #     {'status': reply_text,
-        #      'in_reply_to_status_id': tweet['id']})
 
     def tweet_image(self, status, image, in_reply_to=None):
         """Tweet with an image. `image` is a PIL Image."""
@@ -185,7 +183,7 @@ class Bot(object):
 
     def make_wp_post(self, title, content, tags=None, categories=None,
                      images=None, publish=True):
-        """Make a WordPress blog post, optionally including images."""
+        """Make a WordPress blog post and return its ID."""
         if tags is None:
             tags = []
         if categories is None:
@@ -203,8 +201,7 @@ class Bot(object):
             post.post_status = 'publish'
         else:
             post.post_status = 'draft'
-        self.wp_client.call(wordpress_methods.posts.NewPost(post))
-        return
+        return self.wp_client.call(wordpress_methods.posts.NewPost(post))
 
     def upload_wp_image(self, image):
         """Upload a PIL Image to WordPress and return the response."""
@@ -215,7 +212,22 @@ class Bot(object):
                 'bits': image_bits}
         return self.wp_client.call(wordpress_methods.media.UploadFile(data))
 
+    def get_wp_link(self, post_id):
+        """Get the URL of a WordPress post with the given ID."""
+        post = self.wp_client.call(wordpress_methods.posts.GetPost(post_id))
+        return post.link
 
+    def make_post_with_info(self, obj, location, image):
+        """Make a WordPress post about the object and return its URL."""
+        title = obj['name']
+        content = '''<p>{}, {}, is above {} right now.</p>
+[gallery type="rectangular" ids="{}" size="full"]'''
+        content = content.format(
+            obj['name'], OTYPES_DICT[obj['type']].tweet_name, location, '{}')
+        post_id = self.make_wp_post(
+            title, content, categories=['botpost'], tags=[obj['type']],
+            images=[image])
+        return self.get_wp_link(post_id)
 
 
 def aladin_url_image(coords):
