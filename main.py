@@ -3,6 +3,7 @@ import re
 import json
 import urllib
 from io import BytesIO
+import datetime
 
 import numpy as np
 import requests
@@ -16,6 +17,7 @@ from wordpress_xmlrpc import Client as WordPressClient
 from wordpress_xmlrpc import WordPressPost
 from wordpress_xmlrpc import methods as wordpress_methods
 from wordpress_xmlrpc.compat import xmlrpc_client
+import pytz
 
 from otype import OTYPES_DICT
 
@@ -53,6 +55,8 @@ except KeyError:
 
 START_TIME = Time('2000-01-01 12:00:00.0', scale='utc')
 
+TZ_DICT = {"International Date Line West": "Pacific/Midway", "Midway Island": "Pacific/Midway", "American Samoa": "Pacific/Pago_Pago", "Hawaii": "Pacific/Honolulu", "Alaska": "America/Juneau", "Pacific Time (US & Canada)": "America/Los_Angeles", "Tijuana": "America/Tijuana", "Mountain Time (US & Canada)": "America/Denver", "Arizona": "America/Phoenix", "Chihuahua": "America/Chihuahua", "Mazatlan": "America/Mazatlan", "Central Time (US & Canada)": "America/Chicago", "Saskatchewan": "America/Regina", "Guadalajara": "America/Mexico_City", "Mexico City": "America/Mexico_City", "Monterrey": "America/Monterrey", "Central America": "America/Guatemala", "Eastern Time (US & Canada)": "America/New_York", "Indiana (East)": "America/Indiana/Indianapolis", "Bogota": "America/Bogota", "Lima": "America/Lima", "Quito": "America/Lima", "Atlantic Time (Canada)": "America/Halifax", "Caracas": "America/Caracas", "La Paz": "America/La_Paz", "Santiago": "America/Santiago", "Newfoundland": "America/St_Johns", "Brasilia": "America/Sao_Paulo", "Buenos Aires": "America/Argentina/Buenos_Aires", "Montevideo": "America/Montevideo", "Georgetown": "America/Guyana", "Greenland": "America/Godthab", "Mid-Atlantic": "Atlantic/South_Georgia", "Azores": "Atlantic/Azores", "Cape Verde Is.": "Atlantic/Cape_Verde", "Dublin": "Europe/Dublin", "Edinburgh": "Europe/London", "Lisbon": "Europe/Lisbon", "London": "Europe/London", "Casablanca": "Africa/Casablanca", "Monrovia": "Africa/Monrovia", "UTC": "Etc/UTC", "Belgrade": "Europe/Belgrade", "Bratislava": "Europe/Bratislava", "Budapest": "Europe/Budapest", "Ljubljana": "Europe/Ljubljana", "Prague": "Europe/Prague", "Sarajevo": "Europe/Sarajevo", "Skopje": "Europe/Skopje", "Warsaw": "Europe/Warsaw", "Zagreb": "Europe/Zagreb", "Brussels": "Europe/Brussels", "Copenhagen": "Europe/Copenhagen", "Madrid": "Europe/Madrid", "Paris": "Europe/Paris", "Amsterdam": "Europe/Amsterdam", "Berlin": "Europe/Berlin", "Bern": "Europe/Berlin", "Rome": "Europe/Rome", "Stockholm": "Europe/Stockholm", "Vienna": "Europe/Vienna", "West Central Africa": "Africa/Algiers", "Bucharest": "Europe/Bucharest", "Cairo": "Africa/Cairo", "Helsinki": "Europe/Helsinki", "Kyiv": "Europe/Kiev", "Riga": "Europe/Riga", "Sofia": "Europe/Sofia", "Tallinn": "Europe/Tallinn", "Vilnius": "Europe/Vilnius", "Athens": "Europe/Athens", "Istanbul": "Europe/Istanbul", "Minsk": "Europe/Minsk", "Jerusalem": "Asia/Jerusalem", "Harare": "Africa/Harare", "Pretoria": "Africa/Johannesburg", "Moscow": "Europe/Moscow", "St. Petersburg": "Europe/Moscow", "Volgograd": "Europe/Moscow", "Kuwait": "Asia/Kuwait", "Riyadh": "Asia/Riyadh", "Nairobi": "Africa/Nairobi", "Baghdad": "Asia/Baghdad", "Tehran": "Asia/Tehran", "Abu Dhabi": "Asia/Muscat", "Muscat": "Asia/Muscat", "Baku": "Asia/Baku", "Tbilisi": "Asia/Tbilisi", "Yerevan": "Asia/Yerevan", "Kabul": "Asia/Kabul", "Ekaterinburg": "Asia/Yekaterinburg", "Islamabad": "Asia/Karachi", "Karachi": "Asia/Karachi", "Tashkent": "Asia/Tashkent", "Chennai": "Asia/Kolkata", "Kolkata": "Asia/Kolkata", "Mumbai": "Asia/Kolkata", "New Delhi": "Asia/Kolkata", "Kathmandu": "Asia/Kathmandu", "Astana": "Asia/Dhaka", "Dhaka": "Asia/Dhaka", "Sri Jayawardenepura": "Asia/Colombo", "Almaty": "Asia/Almaty", "Novosibirsk": "Asia/Novosibirsk", "Rangoon": "Asia/Rangoon", "Bangkok": "Asia/Bangkok", "Hanoi": "Asia/Bangkok", "Jakarta": "Asia/Jakarta", "Krasnoyarsk": "Asia/Krasnoyarsk", "Beijing": "Asia/Shanghai", "Chongqing": "Asia/Chongqing", "Hong Kong": "Asia/Hong_Kong", "Urumqi": "Asia/Urumqi", "Kuala Lumpur": "Asia/Kuala_Lumpur", "Singapore": "Asia/Singapore", "Taipei": "Asia/Taipei", "Perth": "Australia/Perth", "Irkutsk": "Asia/Irkutsk", "Ulaanbaatar": "Asia/Ulaanbaatar", "Seoul": "Asia/Seoul", "Osaka": "Asia/Tokyo", "Sapporo": "Asia/Tokyo", "Tokyo": "Asia/Tokyo", "Yakutsk": "Asia/Yakutsk", "Darwin": "Australia/Darwin", "Adelaide": "Australia/Adelaide", "Canberra": "Australia/Melbourne", "Melbourne": "Australia/Melbourne", "Sydney": "Australia/Sydney", "Brisbane": "Australia/Brisbane", "Hobart": "Australia/Hobart", "Vladivostok": "Asia/Vladivostok", "Guam": "Pacific/Guam", "Port Moresby": "Pacific/Port_Moresby", "Magadan": "Asia/Magadan", "Solomon Is.": "Pacific/Guadalcanal", "New Caledonia": "Pacific/Noumea", "Fiji": "Pacific/Fiji", "Kamchatka": "Asia/Kamchatka", "Marshall Is.": "Pacific/Majuro", "Auckland": "Pacific/Auckland", "Wellington": "Pacific/Auckland", "Nuku'alofa": "Pacific/Tongatapu", "Tokelau Is.": "Pacific/Fakaofo", "Chatham Is.": "Pacific/Chatham", "Samoa": "Pacific/Apia"}
+
 SimbadQuerier = Simbad()
 SimbadQuerier.add_votable_fields('otype')
 
@@ -83,17 +87,27 @@ class Bot(object):
 
     def process_tweet(self, tweet):
         """Process and reply to a tweet."""
-        text = tweet['text'].lower().replace('@whatsaboveme', '')
+        if not tweet['text'].lower().startswith('@whatsaboveme'):
+            # Ignore any tweet not addressed to me
+            return
+        # Now we can strip out the mention from the text
+        tweet_text = tweet['text'][13:]
+        # And any extraneous whitespace
+        tweet_text = ' '.join(tweet_text.split())
+        # Extract the timestamp and turn it into a datetime object
+        tweet_time = self.read_time(tweet['created_at'])
+        tweet_tz = self.read_tz(tweet['user']['time_zone'])
         try:
-            location = self.get_location(text)
+            location = self.get_location(tweet_text)
         except LocationNotFoundError:
             return
-        ra_dec = self.get_ra_dec(location)
+        ra_dec = self.get_ra_dec(location, tweet_time)
         obj = self.get_object(ra_dec)
         image = self.get_sky_image(obj['coords'])
         processed_image = self.process_image(image)
         processed_image.filename = obj['name']+'.jpeg'
-        link = self.make_post_with_info(obj, text, processed_image)
+        link = self.make_post_with_info(
+            obj, tweet_text, tweet_time, tweet_tz, processed_image)
         message = '{}, {}, is above you right now. More info: {}'.format(
             obj['name'], OTYPES_DICT[obj['type']].tweet_name, link)
         reply_text = '@{} {}'.format(tweet['user']['screen_name'], message)
@@ -134,8 +148,9 @@ class Bot(object):
         print 'Location found: {}, {}'.format(location['lng'], location['lat'])
         return location
 
-    def get_ra_dec(self, location):
-        gst = (18.697374558 + 24.06570982441908 * (Time.now() - START_TIME).value)
+    def get_ra_dec(self, location, at_time):
+        delta = (Time(at_time, scale='utc') - START_TIME).value
+        gst = 18.697374558 + 24.06570982441908 * delta
         ra = (gst * 15.0 + location['lng']) % 360                                                      
         dec = location['lat']
         print 'Coordinates found: {}, {}'.format(ra, dec)
@@ -212,7 +227,7 @@ class Bot(object):
         post = self.wp_client.call(wordpress_methods.posts.GetPost(post_id))
         return post.link
 
-    def make_post_with_info(self, obj, location, image):
+    def make_post_with_info(self, obj, location, at_time, time_zone, image):
         """Make a WordPress post about the object and return its URL."""
         title = obj['name']
         image_response = self.upload_wp_image(image)
@@ -220,14 +235,40 @@ class Bot(object):
             n_pix_image=self.n_pix_image,
             image_url=image_response['url'],
             name=obj['name'])
-        description_html = '''<p>{name}, {otype}, is above {location} right now.</p>'''.format(
+        formatted_time = self.format_time(at_time, time_zone)
+        description_html = '''<p>{name}, {otype}, was above {location} at {at_time}.</p>'''.format(
             name=obj['name'],
             otype=OTYPES_DICT[obj['type']].tweet_name,
-            location=location)
+            location=location,
+            at_time=formatted_time)
         content = description_html + image_html
         post_id = self.make_wp_post(
             title, content, categories=['botpost'], tags=[obj['type']])
         return self.get_wp_link(post_id)
+
+    def read_time(self, time_str):
+        """Convert time string to UTC datetime object."""
+        time_obj = datetime.datetime.strptime(
+            time_str, '%a %b %d %H:%M:%S +0000 %Y')
+        time_obj = datetime.datetime(
+            time_obj.year, time_obj.month, time_obj.day, time_obj.hour,
+            time_obj.minute, time_obj.second, tzinfo=pytz.utc)
+        return time_obj
+
+    def read_tz(self, time_zone):
+        """Convert timezone string to pytz timezone object."""
+        if time_zone:
+            tz_str = TZ_DICT[time_zone]
+        else:
+            tz_str = 'UTC'
+        return pytz.timezone(tz_str)
+
+    def format_time(self, time, time_zone):
+        """Format a time+date for human reading."""
+        time_in_tz = time.astimezone(time_zone)
+        time_str = time_in_tz.strftime('%H:%M:%S on %d %B %Y (%Z)')
+        time_str = time_str.replace(' 0', ' ').replace(' ()', '')
+        return time_str
 
 
 def aladin_url_image(coords):
