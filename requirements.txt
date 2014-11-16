@@ -13,3 +13,5 @@ requests==2.4.0
 requests-oauthlib==0.4.1
 six==1.7.3
 wsgiref==0.1.2
+python-wordpress-xmlrpc==2.3
+pytz==2014.9
