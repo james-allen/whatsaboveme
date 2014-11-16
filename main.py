@@ -9,10 +9,13 @@ import requests
 from astropy.time import Time
 from astropy import coordinates
 import astropy.units as u
-# from astroquery.ned import Ned
 from astroquery.simbad import Simbad
 from TwitterAPI import TwitterAPI
 from PIL import Image
+from wordpress_xmlrpc import Client as WordPressClient
+from wordpress_xmlrpc import WordPressPost
+from wordpress_xmlrpc import methods as wordpress_methods
+from wordpress_xmlrpc.compat import xmlrpc_client
 
 from otype import OTYPES_DICT
 
@@ -41,6 +44,13 @@ except KeyError:
     TWITTER_ACCESS_TOKEN_KEY = None
     TWITTER_ACCESS_TOKEN_SECRET = None
 
+WORDPRESS_ENDPOINT = 'http://whatsaboveme.wordpress.com/xmlrpc.php'
+try:
+    WORDPRESS_PASSWORD = os.environ['WORDPRESS_PASSWORD']
+except KeyError:
+    print 'WordPress password not found.'
+    WORDPRESS_PASSWORD = None
+
 START_TIME = Time('2000-01-01 12:00:00.0', scale='utc')
 
 SimbadQuerier = Simbad()
@@ -54,17 +64,19 @@ class Bot(object):
 
     def __init__(self, n_pix_image=400, arrow_filename='/app/arrow.png',
                  arrow_offset=(179, 130)):
-        self.api = TwitterAPI(
+        self.twitter_api = TwitterAPI(
             TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET,
             TWITTER_ACCESS_TOKEN_KEY, TWITTER_ACCESS_TOKEN_SECRET)
         self.stream = None
+        self.wp_client = WordPressClient(
+            WORDPRESS_ENDPOINT, 'whatsaboveme', WORDPRESS_PASSWORD)
         self.n_pix_image = n_pix_image
         self.arrow = Image.open(arrow_filename)
         self.arrow_offset = arrow_offset
 
     def activate(self):
         """Switch the bot on."""
-        self.stream = self.api.request(
+        self.stream = self.twitter_api.request(
             'statuses/filter', {'track': '@whatsaboveme'})
         for tweet in self.stream:
             self.process_tweet(tweet)
@@ -96,14 +108,14 @@ class Bot(object):
         response = requests.post(
             TWITTER_URL_MEDIA_UPLOAD,
             files={'media': image_bytes},
-            auth=self.api.auth)
+            auth=self.twitter_api.auth)
         response_json = json.loads(response.text)
         media_id = response_json['media_id_string']
         payload = {'status': status,
                    'media_ids': media_id}
         if in_reply_to is not None:
             payload['in_reply_to_status_id'] = in_reply_to['id']
-        self.api.request(
+        self.twitter_api.request(
             'statuses/update',
             payload)
 
@@ -168,8 +180,42 @@ class Bot(object):
             size[0]/2+self.n_pix_image/2,
             size[1]/2+self.n_pix_image/2))
         image_crop.paste(self.arrow, box=self.arrow_offset, mask=self.arrow)
-        'Image processed'
+        print 'Image processed'
         return image_crop
+
+    def make_wp_post(self, title, content, tags=None, categories=None,
+                     images=None, publish=True):
+        """Make a WordPress blog post, optionally including images."""
+        if tags is None:
+            tags = []
+        if categories is None:
+            categories = []
+        post = WordPressPost()
+        post.title = title
+        post.terms_names = {'post_tag': tags, 'category': categories}
+        if images is not None:
+            image_responses = [self.upload_wp_image(image) for image in images]
+            image_ids = ','.join(
+                [response['id'] for response in image_responses])
+            content = content.format(image_ids)
+        post.content = content
+        if publish:
+            post.post_status = 'publish'
+        else:
+            post.post_status = 'draft'
+        self.wp_client.call(wordpress_methods.posts.NewPost(post))
+        return
+
+    def upload_wp_image(self, image):
+        """Upload a PIL Image to WordPress and return the response."""
+        image_bytes = image.tobytes('jpeg', image.mode)
+        image_bits = xmlrpc_client.Binary(image_bytes)
+        data = {'name': image.filename,
+                'type': 'image/jpg',
+                'bits': image_bits}
+        return self.wp_client.call(wordpress_methods.media.UploadFile(data))
+
+
 
 
 def aladin_url_image(coords):
