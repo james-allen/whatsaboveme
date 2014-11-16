@@ -182,7 +182,7 @@ class Bot(object):
         return image_crop
 
     def make_wp_post(self, title, content, tags=None, categories=None,
-                     images=None, publish=True):
+                     publish=True):
         """Make a WordPress blog post and return its ID."""
         if tags is None:
             tags = []
@@ -190,13 +190,8 @@ class Bot(object):
             categories = []
         post = WordPressPost()
         post.title = title
-        post.terms_names = {'post_tag': tags, 'category': categories}
-        if images is not None:
-            image_responses = [self.upload_wp_image(image) for image in images]
-            image_ids = ','.join(
-                [response['id'] for response in image_responses])
-            content = content.format(image_ids)
         post.content = content
+        post.terms_names = {'post_tag': tags, 'category': categories}
         if publish:
             post.post_status = 'publish'
         else:
@@ -220,13 +215,18 @@ class Bot(object):
     def make_post_with_info(self, obj, location, image):
         """Make a WordPress post about the object and return its URL."""
         title = obj['name']
-        content = '''<p>{}, {}, is above {} right now.</p>
-[gallery type="rectangular" ids="{}" size="full"]'''
-        content = content.format(
-            obj['name'], OTYPES_DICT[obj['type']].tweet_name, location, '{}')
+        image_response = self.upload_wp_image(image)
+        image_html = '''[caption id="attachment_22" align="aligncenter" width="{n_pix_image}"]<a href="{image_url}"><img class="wp-image-22 size-full" src="{image_url}" alt="{name}" width="{n_pix_image}" height="{n_pix_image}" /></a> {name}[/caption]'''.format(
+            n_pix_image=self.n_pix_image,
+            image_url=image_response['url'],
+            name=obj['name'])
+        description_html = '''<p>{name}, {otype}, is above {location} right now.</p>'''.format(
+            name=obj['name'],
+            otype=OTYPES_DICT[obj['type']].tweet_name,
+            location=location)
+        content = description_html + image_html
         post_id = self.make_wp_post(
-            title, content, categories=['botpost'], tags=[obj['type']],
-            images=[image])
+            title, content, categories=['botpost'], tags=[obj['type']])
         return self.get_wp_link(post_id)
 
 
