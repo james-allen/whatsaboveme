@@ -66,8 +66,7 @@ SimbadQuerier.add_votable_fields('otype')
 class Bot(object):
     """The WhatsAboveMe twitterbot."""
 
-    def __init__(self, n_pix_image=400, arrow_filename='/app/arrow.png',
-                 arrow_offset=(179, 130)):
+    def __init__(self, n_pix_image=400, arrow_offset=(179, 130)):
         self.twitter_api = TwitterAPI(
             TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET,
             TWITTER_ACCESS_TOKEN_KEY, TWITTER_ACCESS_TOKEN_SECRET)
@@ -75,7 +74,10 @@ class Bot(object):
         self.wp_client = WordPressClient(
             WORDPRESS_ENDPOINT, 'whatsaboveme', WORDPRESS_PASSWORD)
         self.n_pix_image = n_pix_image
-        self.arrow = Image.open(arrow_filename)
+        try:
+            self.arrow = Image.open('/app/arrow.png')
+        except IOError:
+            self.arrow = Image.open('arrow.png')
         self.arrow_offset = arrow_offset
 
     def activate(self):
