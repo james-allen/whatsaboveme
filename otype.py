@@ -256,7 +256,7 @@ def info(obj):
         text += '</p>'
     elif obj['type'] == 'Galaxy':
         text = "<p>Galaxies can contain hundreds of billions of stars, or sometimes even more. Because they are so far away, we normally can't see the individual stars. Instead we see the total light from all of them together."
-        if obj['ze_redshift']:
+        if obj['redshift']:
             text += " This particular galaxy has been measured to be about {} light years away.".format(wordify_number(distance(obj['ze_redshift'])))
         text += '</p>'
     else:

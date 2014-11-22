@@ -180,6 +180,10 @@ class Bot(object):
             'type': closest_object['OTYPE'],
             'coords': coords_result[idx],
         }
+        if closest_object['ze_redshift']:
+            obj['redshift'] = closest_object['ze_redshift']
+        else:
+            obj['redshift'] = None
         for filt in self.filternames:
             key = 'FLUX_' + filt
             if closest_object[key]:
