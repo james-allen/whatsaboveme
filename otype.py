@@ -262,7 +262,7 @@ def info(obj):
     else:
         text = ''
     if obj['mag']:
-        text += '<p>{} has a magnitude of {}, '.format(obj['name'], obj['mag'])
+        text += '<p>{} has a magnitude of {:.1f}, '.format(obj['name'], obj['mag'])
         if obj['mag'] < 3.0:
             text += 'which means it can be seen quite easily with the naked eye.'
         elif obj['mag'] < 6.0:
