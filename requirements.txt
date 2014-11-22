@@ -7,7 +7,6 @@ certifi==14.05.14
 html5lib==1.0b3
 ipython==2.3.0
 keyring==4.0
-numpy==1.8.2
 oauthlib==0.6.3
 requests==2.4.0
 requests-oauthlib==0.4.1
@@ -15,4 +14,3 @@ six==1.7.3
 wsgiref==0.1.2
 python-wordpress-xmlrpc==2.3
 pytz==2014.9
-scipy==0.14.0
