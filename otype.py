@@ -1,7 +1,10 @@
 import requests
+from astropy.cosmology import WMAP9
+import astropy.units as u
 
 import re
 from collections import namedtuple
+import math
 
 Otype = namedtuple(
     'Otype', ('name', 'condensed', 'explanation',
@@ -246,6 +249,16 @@ def info(obj):
     """Return HTML info about a specific object."""
     if obj['type'] == 'Star':
         text = '<p>There are around 300 billion stars in our galaxy, the Milky Way. In general, the most massive stars are the most luminous, but they also live for a shorter time. How bright a star appears from Earth also depends on how close to us it is.</p>'
+    elif obj['type'] == 'IR':
+        text = "<p>We don't know much about this object except that it emits plenty of infrared light. It might be a small, cool star or a distant galaxy."
+        if not obj['mag']:
+            text += " Because it's fainter in visible light than in the infrared, you might not be able to see anything in the image."
+        text += '</p>'
+    elif obj['type'] == 'Galaxy':
+        text = "<p>Galaxies can contain hundreds of billions of stars, or sometimes even more. Because they are so far away, we normally can't see the individual stars. Instead we see the total light from all of them together."
+        if obj['ze_redshift']:
+            text += " This particular galaxy has been measured to be about {} light years away.".format(wordify_number(distance(obj['ze_redshift'])))
+        text += '</p>'
     else:
         text = ''
     if obj['mag']:
@@ -262,6 +275,34 @@ def info(obj):
             text += 'which means it is too faint to be seen without a professional-quality telescope.'
         text += '</p>'
     return text
+
+def distance(redshift):
+    """Return comoving distance in light years for a given redshift."""
+    return WMAP9.comoving_distance(redshift).to(u.lyr).value
+
+def round_to_n(x, n):
+    """Round x to n significant figures."""
+    return int(round(x, -int(math.floor(math.log10(x))) + (n - 1)))
+
+def wordify_number(number):
+    """Present the number as a string with words like 'billion'."""
+    if number < 10.0:
+        factor = int(round(number))
+        name = ''
+    else:
+        rounded = round_to_n(number, 2)
+        named_numbers = (
+            (1.0, ''), (1e6, ' million'), (1e9, ' billion'),
+            (1e12, ' trillion'))
+        for idx, (denominator, name) in enumerate(named_numbers):
+            if denominator > rounded:
+                idx_use = idx - 1
+                break
+        else:
+            return wordify_number(number / denominator) + name
+        denominator, name = named_numbers[idx_use]
+        factor = int(round_to_n(number / denominator, 2))
+    return '{}{}'.format(factor, name)
 
 def count_otypes(verbose=True):
     """Return a dict of the number of each otype in Simbad."""
