@@ -242,6 +242,27 @@ OTYPES_LIST = [Otype(*o) for o in [
 OTYPES_DICT = {
     otype.name: otype for otype in OTYPES_LIST}
 
+def info(obj):
+    """Return HTML info about a specific object."""
+    if obj['type'] == 'Star':
+        text = '<p>There are around 300 billion stars in our galaxy, the Milky Way. In general, the most massive stars are the most luminous, but they also live for a shorter time. How bright a star appears from Earth also depends on how close to us it is.</p>'
+    else:
+        text = ''
+    if obj['mag']:
+        text += '<p>{} has a magnitude of {}, '.format(obj['name'], obj['mag'])
+        if obj['mag'] < 3.0:
+            text += 'which means it can be seen quite easily with the naked eye.'
+        elif obj['mag'] < 6.0:
+            text += 'which means it can be seen with the naked eye on a dark night.'
+        elif obj['mag'] < 9.5:
+            text += 'which means it can be seen with a good pair of binoculars.'
+        elif obj['mag'] < 13.0:
+            text += 'which means it can be seen with a good telescope.'
+        else:
+            text += 'which means it is too faint to be seen without a professional-quality telescope.'
+        text += '</p>'
+    return text
+
 def count_otypes(verbose=True):
     """Return a dict of the number of each otype in Simbad."""
     return {otype[0]: count_single_otype(otype[1], verbose=verbose)

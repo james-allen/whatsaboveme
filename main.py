@@ -19,7 +19,7 @@ from wordpress_xmlrpc import methods as wordpress_methods
 from wordpress_xmlrpc.compat import xmlrpc_client
 import pytz
 
-from otype import OTYPES_DICT
+from otype import OTYPES_DICT, info
 
 GOOGLE_URL_AUTOCOMPLETE = 'https://maps.googleapis.com/maps/api/place/autocomplete/json'
 GOOGLE_URL_DETAILS = 'https://maps.googleapis.com/maps/api/place/details/json'
@@ -255,7 +255,7 @@ class Bot(object):
             otype=OTYPES_DICT[obj['type']].tweet_name,
             location=location,
             at_time=formatted_time)
-        content = description_html + image_html
+        content = description_html + image_html + info(obj)
         post_id = self.make_wp_post(
             title, content, categories=['botpost'], tags=[obj['type']])
         return self.get_wp_link(post_id)
