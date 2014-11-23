@@ -273,6 +273,47 @@ def info(obj):
             "'Galaxy' on Wikipedia": "http://en.wikipedia.org/wiki/Galaxy",
             "Help astronomers classify galaxies at Galaxy Zoo": "http://www.galaxyzoo.org/",
         }
+    elif obj['type'] == 'Radio':
+        text = "<p>We don't know much about this object except that it emits radio waves. It's probably a distant galaxy, with strong magnetic fields that produce the radio waves we see. Alternatively, it could be a pulsar or other object inside our own galaxy, the Milky Way."
+        if not obj['mag']:
+            text += " Because it's fainter in visible light than in the radio, you might not be able to see anything in the image."
+        text += '</p>'
+        links = {
+            "'What is radio astronomy?' by the Australia Telescope National Facility": "http://www.atnf.csiro.au/outreach/education/everyone/radio-astronomy/index.html",
+            "'Radio astronomy' on Wikipedia": "http://en.wikipedia.org/wiki/Radio_astronomy",
+            "'Radio astronomy' on theSkyNet": "https://www.theskynet.org/science_portals/radio?locale=en",
+        }
+    elif obj['type'] == '*inCl':
+        text = "<p>This star lives within a cluster, that could contain anything from a hundred stars to many hundreds of thousands. The largest star clusters are very stable and long-lived, but smaller ones are gradually pulled apart by gravitational forces as they move around inside the galaxy.</p>"
+        links = {
+            "'Star cluster' on Wikipedia": "http://en.wikipedia.org/wiki/Star_cluster",
+            "'Star clusters' clips on the BBC": "http://www.bbc.co.uk/science/space/universe/sights/star_clusters",
+            "'Star clusters' by the Australia Telescope National Facility": "http://www.atnf.csiro.au/outreach/education/senior/astrophysics/stellarevolution_clusters.html",
+        }
+    elif obj['type'] == 'GinGroup':
+        text = "<p>This galaxy lives inside a group of galaxies, which may contain up to around 50 galaxies in a region of space a few million light years across. Our own galaxy, the Milky Way, lives in a small group like this, called the Local Group.</p>"
+        links = {
+            "'Galaxy group' on Wikipedia": "http://en.wikipedia.org/wiki/Galaxy_group",
+            "'Group environment' on Swinburne COSMOS": "http://astronomy.swin.edu.au/cosmos/G/group+environment",
+        }
+    elif obj['type'] == 'V*':
+        text = "<p>Many stars, including this one, vary in brightness over time. There are many things that can cause this, such as changes in the size of the star. Alternatively, if there are two stars orbiting each other they might periodically block some of each other's light.</p>"
+        links = {
+            "'Variable star' on Wikipedia": "http://en.wikipedia.org/wiki/Variable_star",
+            "'Variable stars' by the Australia Telescope National Facility": "http://www.atnf.csiro.au/outreach/education/senior/astrophysics/variable_types.html",
+            "The American Association of Variable Star Observers": "http://www.aavso.org/public",
+            "'Types of variable stars' on space.com": "http://www.space.com/15396-variable-stars.html",
+        }
+    elif obj['type'] == 'X':
+        text = "<p>We don't know much about this object except that it emits X-ray radiation. This means that, whatever it is, it must be extremely hot: millions of degrees Celcius. The Earth's atmosphere absorbs X-rays, so we can only observe these objects using telescopes on satellites or high-altitude balloons."
+        if not obj['mag']:
+            text += " Because {} is fainter in visible light than in X-rays, you might not be able to see anything in the image.".format(obj['name'])
+        text += '</p>'
+        links = {
+            "'X-ray astronomy' on Wikipedia": "http://en.wikipedia.org/wiki/X-ray_astronomy",
+            "'History of X-ray astronomy' by NASA's Chandra X-ray Observatory": "http://chandra.harvard.edu/xray_astro/history.html",
+            "'X-rays reveal the violent side of the universe' by EarthSky": "http://earthsky.org/astronomy-essentials/x-rays-reveal-the-violent-side-of-the-universe",
+        }
     else:
         text = ''
         links = {}
