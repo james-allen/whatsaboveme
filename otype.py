@@ -249,18 +249,33 @@ def info(obj):
     """Return HTML info about a specific object."""
     if obj['type'] == 'Star':
         text = '<p>There are around 300 billion stars in our galaxy, the Milky Way. In general, the most massive stars are the most luminous, but they also live for a shorter time. How bright a star appears from Earth also depends on how close to us it is.</p>'
+        links = {
+            "'Stars' on NASA": "http://science.nasa.gov/astrophysics/focus-areas/how-do-stars-form-and-evolve/",
+            "'Star' on Wikipedia": "http://en.wikipedia.org/wiki/Star",
+            "Visualisation of nearby stars": "http://stars.chromeexperiments.com/",
+        }
     elif obj['type'] == 'IR':
         text = "<p>We don't know much about this object except that it emits plenty of infrared light. It might be a small, cool star or a distant galaxy."
         if not obj['mag']:
             text += " Because it's fainter in visible light than in the infrared, you might not be able to see anything in the image."
         text += '</p>'
+        links = {
+            "'IR astronomy: overview' on NASA/IPAC": "http://www.ipac.caltech.edu/outreach/Edu/importance.html",
+            "'Infrared astronomy' on Wikipedia": "http://en.wikipedia.org/wiki/Infrared_astronomy",
+            "'Why does infrared astronomy matter?' by Eric Diaz": "http://ericfdiaz.wordpress.com/why-does-infrared-astronomy-matters/",
+        }
     elif obj['type'] == 'Galaxy':
         text = "<p>Galaxies can contain hundreds of billions of stars, or sometimes even more. Because they are so far away, we normally can't see the individual stars. Instead we see the total light from all of them together."
         if obj['redshift']:
-            text += " This particular galaxy has been measured to be about {} light years away.".format(wordify_number(distance(obj['ze_redshift'])))
+            text += " This particular galaxy has been measured to be about {} light years away.".format(wordify_number(distance(obj['redshift'])))
         text += '</p>'
+        links = {
+            "'Galaxy' on Wikipedia": "http://en.wikipedia.org/wiki/Galaxy",
+            "Help astronomers classify galaxies at Galaxy Zoo": "http://www.galaxyzoo.org/",
+        }
     else:
         text = ''
+        links = {}
     if obj['mag']:
         text += '<p>{} has a magnitude of {:.1f}, '.format(obj['name'], obj['mag'])
         if obj['mag'] < 3.0:
@@ -274,6 +289,11 @@ def info(obj):
         else:
             text += 'which means it is too faint to be seen without a professional-quality telescope.'
         text += '</p>'
+    if links:
+        text += '<p>You can learn more by following these links:<ul>'
+        for description, url in links.items():
+            text += '<li><a href="{}">{}</a></li>'.format(url, description)
+        text += '</ul></p>'
     return text
 
 def distance(redshift):
