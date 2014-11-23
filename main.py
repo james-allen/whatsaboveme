@@ -186,8 +186,8 @@ class Bot(object):
             obj['redshift'] = closest_object['ze_redshift']
         elif closest_object['RVZ_RADVEL']:
             obj['redshift'] = closest_object['RVZ_RADVEL'] / c
-        elif closest_object['RV_VALUE']:
-            obj['redshift'] = closest_object['RV_VALUE'] / c
+        # elif closest_object['RV_VALUE']:
+        #     obj['redshift'] = closest_object['RV_VALUE'] / c
         else:
             obj['redshift'] = None
         for filt in self.filternames:
