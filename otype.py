@@ -35,7 +35,7 @@ OTYPES_LIST = [Otype(*o) for o in [
     ('gammaBurst', 'gB', 'gamma-ray Burst', 'a gamma-ray burst', None),
     ('Inexistent', 'err', 'Not an object (error, artefact, ...)', 'an error in the database', None),
     ('Gravitation', 'grv', 'Gravitational Source', 'a clump of dark matter', None),
-    ('LensingEv', 'Lev', '(Micro)Lensing Event', 'a past microlensing event', None),
+    ('LensingEv', 'Lev', '(Micro)Lensing Event', 'a past lensing event', None),
     ('Candidate_LensSystem', 'LS?', 'Possible gravitational lens System', 'a possible gravitational lens system', None),
     ('Candidate_Lens', 'Le?', 'Possible gravitational lens', 'a possible gravitational lens', None),
     ('Possible_lensImage', 'LI?', 'Possible gravitationally lensed image', 'a possible gravitationally lensed image', None),
@@ -291,7 +291,10 @@ def info(obj):
             "'Star clusters' by the Australia Telescope National Facility": "http://www.atnf.csiro.au/outreach/education/senior/astrophysics/stellarevolution_clusters.html",
         }
     elif obj['type'] == 'GinGroup':
-        text = "<p>This galaxy lives inside a group of galaxies, which may contain up to around 50 galaxies in a region of space a few million light years across. Our own galaxy, the Milky Way, lives in a small group like this, called the Local Group.</p>"
+        text = "<p>This galaxy lives inside a group of galaxies, which may contain up to around 50 galaxies in a region of space a few million light years across. Our own galaxy, the Milky Way, lives in a small group like this, called the Local Group."
+        if obj['redshift']:
+            text += " This galaxy has been measured to be about {} light years away.".format(wordify_number(distance(obj['redshift'])))
+        text += '</p>'
         links = {
             "'Galaxy group' on Wikipedia": "http://en.wikipedia.org/wiki/Galaxy_group",
             "'Group environment' on Swinburne COSMOS": "http://astronomy.swin.edu.au/cosmos/G/group+environment",
@@ -313,6 +316,36 @@ def info(obj):
             "'X-ray astronomy' on Wikipedia": "http://en.wikipedia.org/wiki/X-ray_astronomy",
             "'History of X-ray astronomy' by NASA's Chandra X-ray Observatory": "http://chandra.harvard.edu/xray_astro/history.html",
             "'X-rays reveal the violent side of the universe' by EarthSky": "http://earthsky.org/astronomy-essentials/x-rays-reveal-the-violent-side-of-the-universe",
+        }
+    elif obj['type'] == 'QSO':
+        text = "<p>A quasar, or quasi-stellar object (QSO), occurs when a large amount of material is falling onto the supermassive black hole in the centre of a galaxy. This material can get heated up until it shines brighter than the galaxy itself. Quasars are some of the most luminous objects ever seen in the universe."
+        if obj['redshift']:
+            text += " This particular quasar has been measured to be about {} light years away.".format(wordify_number(distance(obj['redshift'])))
+        text += '</p>'
+        links = {
+            "'3C273', the first confirmed quasar to be discovered, on Wikipedia": "http://en.wikipedia.org/wiki/3C_273",
+            "'Quasar' on Wikipedia": "http://en.wikipedia.org/wiki/Quasar",
+            "'What is a quasar?' on Universe Today": "http://www.universetoday.com/73222/what-is-a-quasar/",
+        }
+    elif obj['type'] == 'PM*':
+        text = "<p>This star has a high 'proper motion', which means that it is moving relatively fast across the sky. However, because they are so far away, even the 'fastest' stars move very slowly: the highest proper motion of any star is just one degree every 350 years.</p>"
+        links = {
+            "'Proper motion' on Wikipedia": "http://en.wikipedia.org/wiki/Proper_motion",
+            "'Stellar motions' by the Australia Telescope National Facility": "http://www.atnf.csiro.au/outreach/education/senior/astrophysics/proper_motion.html",
+            "'The motion of stars' by Courtney Seligman": "http://cseligman.com/text/stars/propermotion.htm",
+        }
+    elif obj['type'] == 'Candidate_RGB*':
+        text = "<p>This star may be a red giant branch star, although we don't know for sure. Stars on the red giant branch are running out of the hydrogen fuel that keeps them lit up for most of their lives. Their core has been entirely converted into helium, while the remaining hydrogen is in an outer shell.</p>"
+        links = {
+            "'Red giant' on Wikipedia": "http://en.wikipedia.org/wiki/Red_giant",
+            "'Post main sequence stars' by the Australia Telescope National Facility": "http://www.atnf.csiro.au/outreach/education/senior/astrophysics/stellarevolution_postmain.html",
+            "'The transition to the red giant phase for sun-like stars' by Penn State University": "https://www.e-education.psu.edu/astro801/content/l6_p2.html",
+        }
+    elif obj['type'] == 'LensingEv':
+        text = "<p>A lensing event can occur when one object, such as a star, passes in front of another. If the alignment is just right, the gravity of the first object acts as a lens for the light of the second object, making it appear brighter for a short amount of time.</p>"
+        links = {
+            "'Gravitational microlensing' on Wikipedia": "http://en.wikipedia.org/wiki/Gravitational_microlensing",
+            "'Gravitational microlensing' by Las Cumbres Observatory": "http://lcogt.net/spacebook/gravitational-microlensing",
         }
     else:
         text = ''
