@@ -175,7 +175,7 @@ class Bot(object):
         coords_result = coordinates.SkyCoord(
             ra=trimmed_result['RA'], dec=trimmed_result['DEC'],
             unit=(u.hour, u.deg))
-        idx = np.argmin(coords_result)
+        idx = np.argmin(coords_result.separation(coords))
         closest_object = trimmed_result[idx]
         obj = {
             'name': closest_object['MAIN_ID'],
