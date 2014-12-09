@@ -28,6 +28,10 @@ TWITTER_URL_MEDIA_UPLOAD = 'https://upload.twitter.com/1.1/media/upload.json'
 
 ALADIN_URL_IMAGE_BASE = 'http://alasky.u-strasbg.fr/cgi/portal/aladin/get-preview-img.py?pos={},{}&rgb=1'
 
+CHARACTERS_MEDIA = 23
+CHARACTERS_URL = 22
+CHARACTERS_MAXIMUM = 140
+
 try:
     GOOGLE_MAPS_API_KEY = os.environ['GOOGLE_MAPS_API_KEY']
 except KeyError:
@@ -94,18 +98,14 @@ class Bot(object):
 
     def process_tweet(self, tweet):
         """Process and reply to a tweet."""
-        if not tweet['text'].lower().startswith('@whatsaboveme'):
-            # Ignore any tweet not addressed to me
+        tweet_info = self.parse_tweet(tweet['text'])
+        if tweet_info['type'] is 'other':
             return
-        # Now we can strip out the mention from the text
-        tweet_text = tweet['text'][13:]
-        # And any extraneous whitespace
-        tweet_text = ' '.join(tweet_text.split())
         # Extract the timestamp and turn it into a datetime object
         tweet_time = self.read_time(tweet['created_at'])
         tweet_tz = self.read_tz(tweet['user']['time_zone'])
         try:
-            location = self.get_location(tweet_text)
+            location = self.get_location(tweet_info['location_name'])
         except LocationNotFoundError:
             return
         ra_dec = self.get_ra_dec(location, tweet_time)
@@ -114,12 +114,80 @@ class Bot(object):
         processed_image = self.process_image(image)
         processed_image.filename = obj['name']+'.jpeg'
         link = self.make_post_with_info(
-            obj, tweet_text, tweet_time, tweet_tz, processed_image)
-        message = '{}, {}, is above you right now. More info: {}'.format(
-            obj['name'], OTYPES_DICT[obj['type']].tweet_name, link)
-        reply_text = '@{} {}'.format(tweet['user']['screen_name'], message)
+            obj, tweet_info['location_name'], tweet_time, tweet_tz,
+            processed_image)
+        reply_text = self.construct_reply(
+            obj, link, tweet['user']['screen_name'], tweet_info['dot_at'])
         print 'Sending reply: {}'.format(reply_text)
         self.tweet_image(reply_text, processed_image, in_reply_to=tweet)
+
+    def construct_reply(self, obj, link, screen_name, dot_at):
+        """Construct a reply to a tweet."""
+        message = '.' if dot_at else ''
+        message += '@{} {}'.format(screen_name, obj['name'])
+        description = OTYPES_DICT[obj['type']].tweet_name
+        characters_left = (
+            CHARACTERS_MAXIMUM - 
+            (len(message) + CHARACTERS_URL + CHARACTERS_MEDIA))
+        if (len(description) + 3) <= characters_left:
+            message += ', ' + description
+        characters_left = (
+            CHARACTERS_MAXIMUM - 
+            (len(message) + CHARACTERS_URL + CHARACTERS_MEDIA))
+        if 15 <= characters_left:
+            message += ', is above you'
+            extra_options = [
+                ' right now. More info: ',
+                ' right now. More: ',
+                ' now. More info: ',
+                ' now. More: ',
+                ' now. ',
+                '. ',
+                ' ',
+            ]
+        else:
+            extra_options = [
+                '. More: ',
+                '. ',
+                ' ',
+            ]
+        characters_left = (
+            CHARACTERS_MAXIMUM - 
+            (len(message) + CHARACTERS_URL + CHARACTERS_MEDIA))
+        for extra in extra_options:
+            if len(extra) <= characters_left:
+                message += extra
+                break
+        else:
+            # Really should put a catch here for very extreme cases
+            pass
+        message += link
+        return message
+
+    def parse_tweet(self, text):
+        """Extract location name from a tweet message."""
+        dot_at = text.startswith('.')
+        if dot_at:
+            text = text[1:]
+        words = text.split()
+        words_trimmed = []
+        found_me = False
+        for word in words:
+            if word.lower().startswith('@whatsaboveme'):
+                found_me = True
+            # Remove all @mentions from the text
+            if not word.startswith('@'):
+                # This is a normal word. Have I been mentioned yet?
+                if not found_me:
+                    # No. So this is probably just talking about me.
+                    # Don't bother searching for a location
+                    return {'type': 'other'}
+                # Copy what's left
+                words_trimmed.append(word)
+        result = {'type': 'mention',
+                  'location_name': ' '.join(words_trimmed),
+                  'dot_at': dot_at}
+        return result
 
     def tweet_image(self, status, image, in_reply_to=None):
         """Tweet with an image. `image` is a PIL Image."""
@@ -139,6 +207,7 @@ class Bot(object):
             payload)
 
     def get_location(self, name):
+        """Convert a location name into lon+lat."""
         print 'Searching for location: {}'.format(name)
         req_id = requests.get(
             GOOGLE_URL_AUTOCOMPLETE,
@@ -156,6 +225,7 @@ class Bot(object):
         return location
 
     def get_ra_dec(self, location, at_time):
+        """Convert lon+lat+time into ra+dec."""
         delta = (Time(at_time, scale='utc') - START_TIME).value
         gst = 18.697374558 + 24.06570982441908 * delta
         ra = (gst * 15.0 + location['lng']) % 360                                                      
@@ -164,6 +234,7 @@ class Bot(object):
         return {'ra': ra, 'dec': dec}
 
     def get_object(self, coords_dict):
+        """Query Simbad for the object at a given ra+dec."""
         coords = coordinates.SkyCoord(
             ra=coords_dict['ra'], dec=coords_dict['dec'], unit=(u.deg, u.deg))
         simbad_result = self.simbad.query_region(coords, radius=0.25*u.deg)
