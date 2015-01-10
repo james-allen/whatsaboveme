@@ -94,8 +94,7 @@ class Bot(object):
 
     def activate(self):
         """Switch the bot on."""
-        self.stream = self.twitter_api.request(
-            'statuses/filter', {'track': '@whatsaboveme'})
+        self.stream = self.twitter_api.request('user')
         for tweet in self.stream:
             self.process_tweet(tweet)
 
