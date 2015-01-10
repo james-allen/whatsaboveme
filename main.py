@@ -296,10 +296,12 @@ class Bot(object):
         if tweet_type == 'request':
             result['location'] = text_trimmed
             result['dot_at'] = False
+            result['username'] = tweet['user']['screen_name']
         elif tweet_type == 'follow' or tweet_type == 'unfollow':
             result['username'] = tweet['user']['screen_name']
         elif tweet_type == 'location':
             result['location'] = location
+            result['username'] = tweet['user']['screen_name']
         return result
 
     def tweet_image(self, status, image, in_reply_to=None):
