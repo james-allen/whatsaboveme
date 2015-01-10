@@ -1,5 +1,5 @@
 import requests
-from astropy.cosmology import WMAP9
+# from astropy.cosmology import WMAP9
 import astropy.units as u
 
 import re
@@ -266,8 +266,8 @@ def info(obj):
         }
     elif obj['type'] == 'Galaxy':
         text = "<p>Galaxies can contain hundreds of billions of stars, or sometimes even more. Because they are so far away, we normally can't see the individual stars. Instead we see the total light from all of them together."
-        if obj['redshift']:
-            text += " This particular galaxy has been measured to be about {} light years away.".format(wordify_number(distance(obj['redshift'])))
+        # if obj['redshift']:
+        #     text += " This particular galaxy has been measured to be about {} light years away.".format(wordify_number(distance(obj['redshift'])))
         text += '</p>'
         links = {
             "'Galaxy' on Wikipedia": "http://en.wikipedia.org/wiki/Galaxy",
@@ -292,8 +292,8 @@ def info(obj):
         }
     elif obj['type'] == 'GinGroup':
         text = "<p>This galaxy lives inside a group of galaxies, which may contain up to around 50 galaxies in a region of space a few million light years across. Our own galaxy, the Milky Way, lives in a small group like this, called the Local Group."
-        if obj['redshift']:
-            text += " This galaxy has been measured to be about {} light years away.".format(wordify_number(distance(obj['redshift'])))
+        # if obj['redshift']:
+        #     text += " This galaxy has been measured to be about {} light years away.".format(wordify_number(distance(obj['redshift'])))
         text += '</p>'
         links = {
             "'Galaxy group' on Wikipedia": "http://en.wikipedia.org/wiki/Galaxy_group",
@@ -319,8 +319,8 @@ def info(obj):
         }
     elif obj['type'] == 'QSO':
         text = "<p>A quasar, or quasi-stellar object (QSO), occurs when a large amount of material is falling onto the supermassive black hole in the centre of a galaxy. This material can get heated up until it shines brighter than the galaxy itself. Quasars are some of the most luminous objects ever seen in the universe."
-        if obj['redshift']:
-            text += " This particular quasar has been measured to be about {} light years away.".format(wordify_number(distance(obj['redshift'])))
+        # if obj['redshift']:
+        #     text += " This particular quasar has been measured to be about {} light years away.".format(wordify_number(distance(obj['redshift'])))
         text += '</p>'
         links = {
             "'3C273', the first confirmed quasar to be discovered, on Wikipedia": "http://en.wikipedia.org/wiki/3C_273",
