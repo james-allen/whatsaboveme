@@ -102,6 +102,8 @@ class Bot(object):
     def process_tweet(self, tweet):
         """Process and reply to a tweet."""
         tweet_info = self.parse_tweet(tweet)
+        print 'Retrieved this information from the tweet:'
+        print tweet_info
         if tweet_info['type'] in ['other', 'mention', 'not_tweet']:
             return
         elif tweet_info['type'] == 'follow':
