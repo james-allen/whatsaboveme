@@ -499,31 +499,25 @@ class Bot(object):
 
 def find_location_in_tags(tagged):
     """Return the longest location in the tagged text, or None."""
-    location = None
-    length = 0
+    location = []
     current_location = []
-    current_length = 0
     for line in tagged.split('\n'):
         if line.endswith('GPE') or line.endswith('LOCATION'):
             # This is a location word, add it to the current one
             current_location.append(line.split()[0])
-            current_length += 1
+        elif line.startswith(',') and current_location:
+            current_location[-1] += ','
         else:
             # Not a location word.
-            if current_length > length:
+            if len(current_location) > len(location):
                 # Just finished a new longest word, so save it
                 location = current_location
-                length = current_length
-                # Restart the counters
+                # Restart the counter
                 current_location = []
-                current_length = 0
     # Check again in case the text finished with the longest location
-    if current_length > length:
+    if len(current_location) > len(location):
         location = current_location
-    if location:
-        return ' '.join(location)
-    else:
-        return None
+    return ' '.join(location)
 
 def perfect_match(shorter, longer):
     """Make sure the longer starts with the shorter, with some allowances."""
