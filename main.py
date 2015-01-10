@@ -105,6 +105,9 @@ class Bot(object):
         print tweet_info
         if tweet_info['type'] in ['other', 'mention', 'not_tweet']:
             return
+        if tweet['user']['screen_name'].lower() == 'whatsaboveme':
+            # Don't reply to your own tweets!
+            return
         elif tweet_info['type'] == 'follow':
             self.follow(
                 tweet_info['username'],
