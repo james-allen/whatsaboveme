@@ -4,6 +4,7 @@ import json
 import urllib
 from io import BytesIO
 import datetime
+import string
 
 import numpy as np
 import requests
@@ -25,6 +26,8 @@ GOOGLE_URL_AUTOCOMPLETE = 'https://maps.googleapis.com/maps/api/place/autocomple
 GOOGLE_URL_DETAILS = 'https://maps.googleapis.com/maps/api/place/details/json'
 
 TWITTER_URL_MEDIA_UPLOAD = 'https://upload.twitter.com/1.1/media/upload.json'
+
+TEXT_PROCESSING_URL = 'http://text-processing.com/api/tag/'
 
 ALADIN_URL_IMAGE_BASE = 'http://alasky.u-strasbg.fr/cgi/portal/aladin/get-preview-img.py?pos={},{}&rgb=1'
 
@@ -98,14 +101,63 @@ class Bot(object):
 
     def process_tweet(self, tweet):
         """Process and reply to a tweet."""
-        tweet_info = self.parse_tweet(tweet['text'])
-        if tweet_info['type'] is 'other':
+        tweet_info = self.parse_tweet(tweet)
+        if tweet_info['type'] in ['other', 'mention', 'not_tweet']:
             return
-        # Extract the timestamp and turn it into a datetime object
-        tweet_time = self.read_time(tweet['created_at'])
-        tweet_tz = self.read_tz(tweet['user']['time_zone'])
+        elif tweet_info['type'] == 'follow':
+            self.follow(
+                tweet_info['username'],
+                in_reply_to=tweet['id'],
+                send_tweet=True)
+        elif tweet_info['type'] == 'unfollow':
+            self.unfollow(
+                tweet_info['username'],
+                in_reply_to=tweet['id'],
+                send_tweet=True)
+        elif tweet_info['type'] == 'location':
+            self.tweet_location(
+                tweet_info['location'],
+                tweet_info['time'],
+                tweet_info['username'],
+                tweet_info['tz'],
+                False,
+                tweet['id'],
+                location_in_tweet=tweet_info['location'],
+                strict=True)
+        elif tweet_info['type'] == 'request':
+            self.tweet_location(
+                tweet_info['location'],
+                tweet_info['time'],
+                tweet_info['username'],
+                tweet_info['tz'],
+                tweet_info['dot_at'],
+                tweet['id'])
+
+    def follow(self, username, in_reply_to=None, send_tweet=True):
+        """Follow a user and send them an explanatory tweet."""
+        payload = {'screen_name': username}
+        self.twitter_api.request(
+            'friendships/create',
+            payload)
+        if send_tweet:
+            message = '@{} I am now following you, and will occasionally tweet you with updates. Tweet "@WhatsAboveMe unfollow" to stop at any time.'.format(username)
+            self.tweet_text(message, in_reply_to=in_reply_to)
+
+    def unfollow(self, username, in_reply_to=None, send_tweet=True):
+        """Unfollow a user and send them an explanatory tweet."""
+        payload = {'screen_name': username}
+        self.twitter_api.request(
+            'friendships/destroy',
+            payload)
+        if send_tweet:
+            message = '@{} Sorry to say goodbye! I will no longer tweet you any updates. If you change your mind, tweet "@WhatsAboveMe follow".'.format(username)
+            self.tweet_text(message, in_reply_to=in_reply_to)
+
+    def tweet_location(self, location_name, tweet_time, username, tweet_tz,
+                       dot_at, tweet_id, location_in_tweet='you',
+                       strict=False):
         try:
-            location = self.get_location(tweet_info['location_name'])
+            location = self.get_location(location_name, strict=strict)
         except LocationNotFoundError:
             return
         ra_dec = self.get_ra_dec(location, tweet_time)
@@ -114,14 +166,15 @@ class Bot(object):
         processed_image = self.process_image(image)
         processed_image.filename = obj['name']+'.jpeg'
         link = self.make_post_with_info(
-            obj, tweet_info['location_name'], tweet_time, tweet_tz,
+            obj, location_name, tweet_time, tweet_tz,
             processed_image)
         reply_text = self.construct_reply(
-            obj, link, tweet['user']['screen_name'], tweet_info['dot_at'])
+            obj, link, username, dot_at, location_in_tweet)
         print 'Sending reply: {}'.format(reply_text)
-        self.tweet_image(reply_text, processed_image, in_reply_to=tweet)
+        self.tweet_image(reply_text, processed_image, in_reply_to=tweet_id)
 
-    def construct_reply(self, obj, link, screen_name, dot_at):
+    def construct_reply(self, obj, link, screen_name, dot_at,
+                        location_in_tweet):
         """Construct a reply to a tweet."""
         message = '.' if dot_at else ''
         message += '@{} {}'.format(screen_name, obj['name'])
@@ -134,8 +187,8 @@ class Bot(object):
         characters_left = (
             CHARACTERS_MAXIMUM - 
             (len(message) + CHARACTERS_URL + CHARACTERS_MEDIA))
-        if 15 <= characters_left:
-            message += ', is above you'
+        if (12 + len(location_in_tweet)) <= characters_left:
+            message += ', is above ' + location_in_tweet
             extra_options = [
                 ' right now. More info: ',
                 ' right now. More: ',
@@ -164,29 +217,89 @@ class Bot(object):
         message += link
         return message
 
-    def parse_tweet(self, text):
-        """Extract location name from a tweet message."""
+    def parse_tweet(self, tweet):
+        """
+        Extract location name and other info from a tweet message.
+
+        Returns a dict that always includes 'type', plus other data as
+        necessary. Possible types are:
+
+        'request': a direct request for an update
+        'mention': a tweet mentioning @whatsaboveme, but not a request
+        'follow': a request that @whatsaboveme should follow the user
+        'unfollow': a request that @whatsaboveme should unfollow the user
+        'location': a tweet that includes a location to reply to
+        'geolocation': a tweet that has geolocation data to reply to
+        'other': none of the above, to be ignored
+        'not_tweet': some other message from Twitter, not a tweet
+
+        A 'location' type supercedes a 'geolocation' type, i.e. if a location
+        is found in the text than any geolocation data will be ignored.
+        """
+        if tweet.keys() == ['friends'] or tweet.keys() == ['friends_str']:
+            return {'type': 'not_tweet'}
+        text = tweet['text']
         dot_at = text.startswith('.')
         if dot_at:
             text = text[1:]
         words = text.split()
+        # All @'s removed
         words_trimmed = []
+        # All @'s replaced with John, for text parsing purposes
+        words_johnned = []
         found_me = False
+        tweet_type = 'other'
         for word in words:
             if word.lower().startswith('@whatsaboveme'):
                 found_me = True
+                if words_trimmed:
+                    # There have already been some non-@ words
+                    tweet_type = 'mention'
             # Remove all @mentions from the text
-            if not word.startswith('@'):
+            if word.startswith('@'):
+                words_johnned.append('John')
+            else:
                 # This is a normal word. Have I been mentioned yet?
-                if not found_me:
-                    # No. So this is probably just talking about me.
-                    # Don't bother searching for a location
-                    return {'type': 'other'}
+                if tweet_type == 'other' and found_me:
+                    # The tweet was addressed to me. Mark it as a request.
+                    # This might change to follow/unfollow later
+                    tweet_type = 'request'
                 # Copy what's left
                 words_trimmed.append(word)
-        result = {'type': 'mention',
-                  'location_name': ' '.join(words_trimmed),
-                  'dot_at': dot_at}
+                words_johnned.append(word)
+        text_trimmed = ' '.join(words_trimmed)
+        text_johnned = ' '.join(words_johnned)
+        # At this point tweet_type will be 'request' if the tweet started with
+        # @whatsaboveme, 'mention' if @whatsaboveme was elsewhere in the text,
+        # or 'other' if we weren't mentioned at all.
+        # First check if 'request' is actually follow/unfollow
+        if tweet_type == 'request':
+            text_simple = text_trimmed.strip(string.punctuation).lower()
+            if text_simple == 'follow':
+                tweet_type = 'follow'
+            elif text_simple == 'unfollow':
+                tweet_type = 'unfollow'
+        elif tweet_type == 'other':
+            # We weren't mentioned in this tweet. Check it for locations that
+            # might be named.
+            response = requests.post(
+                TEXT_PROCESSING_URL,
+                data={'text': text_johnned, 'output': 'iob'})
+            tagged = json.loads(response.content)['text']
+            location = find_location_in_tags(tagged)
+            if location:
+                tweet_type = 'location'
+        # Now construct an appropriate response, depending on the tweet type
+        result = {'type': tweet_type,
+                  'time': self.read_time(tweet['created_at']),
+                  'tz': self.read_tz(tweet['user']['time_zone'])} 
+        if tweet_type == 'request':
+            result['location'] = text_trimmed
+            result['dot_at'] = False
+        elif tweet_type == 'follow' or tweet_type == 'unfollow':
+            result['username'] = tweet['user']['screen_name']
+        elif tweet_type == 'location':
+            result['location'] = location
         return result
 
     def tweet_image(self, status, image, in_reply_to=None):
@@ -201,12 +314,21 @@ class Bot(object):
         payload = {'status': status,
                    'media_ids': media_id}
         if in_reply_to is not None:
-            payload['in_reply_to_status_id'] = in_reply_to['id']
+            payload['in_reply_to_status_id'] = in_reply_to
         self.twitter_api.request(
             'statuses/update',
             payload)
 
-    def get_location(self, name):
+    def tweet_text(self, status, in_reply_to=None):
+        """Tweet with text only, no image."""
+        payload = {'status': status}
+        if in_reply_to is not None:
+            payload['in_reply_to_status_id'] = in_reply_to
+        self.twitter_api.request(
+            'statuses/update',
+            payload)
+
+    def get_location(self, name, strict=False):
         """Convert a location name into lon+lat."""
         print 'Searching for location: {}'.format(name)
         req_id = requests.get(
@@ -217,6 +339,9 @@ class Bot(object):
             raise LocationNotFoundError(name)
         place_id = result['predictions'][0]['place_id']
         print 'Place ID found: {}'.format(place_id)
+        description = result['predictions'][0]['description']
+        if strict and not perfect_match(name, description):
+            raise LocationNotFoundError(name)
         req_loc = requests.get(
             GOOGLE_URL_DETAILS,
             params={'placeid': place_id, 'key':GOOGLE_MAPS_API_KEY})
@@ -364,6 +489,41 @@ class Bot(object):
         time_str = time_in_tz.strftime('%H:%M:%S on %d %B %Y (%Z)')
         time_str = time_str.replace(' 0', ' ').replace(' ()', '')
         return time_str
+
+
+def find_location_in_tags(tagged):
+    """Return the longest location in the tagged text, or None."""
+    location = None
+    length = 0
+    current_location = []
+    current_length = 0
+    for line in tagged.split('\n'):
+        if line.endswith('GPE') or line.endswith('LOCATION'):
+            # This is a location word, add it to the current one
+            current_location.append(line.split()[0])
+            current_length += 1
+        else:
+            # Not a location word.
+            if current_length > length:
+                # Just finished a new longest word, so save it
+                location = current_location
+                length = current_length
+                # Restart the counters
+                current_location = []
+                current_length = 0
+    # Check again in case the text finished with the longest location
+    if current_length > length:
+        location = current_location
+    if location:
+        return ' '.join(location)
+    else:
+        return None
+
+def perfect_match(shorter, longer):
+    """Make sure the longer starts with the shorter, with some allowances."""
+    longer_simple = longer.strip(string.punctuation).lower()
+    shorter_simple = shorter.strip(string.punctuation).lower()
+    return longer_simple.startswith(shorter_simple)
 
 
 def aladin_url_image(coords):
