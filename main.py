@@ -170,7 +170,7 @@ class Bot(object):
         processed_image = self.process_image(image)
         processed_image.filename = obj['name']+'.jpeg'
         link = self.make_post_with_info(
-            obj, location_name, tweet_time, tweet_tz,
+            obj, location['description'], tweet_time, tweet_tz,
             processed_image)
         reply_text = self.construct_reply(
             obj, link, username, dot_at, location_in_tweet)
@@ -346,12 +346,14 @@ class Bot(object):
         place_id = result['predictions'][0]['place_id']
         print 'Place ID found: {}'.format(place_id)
         description = result['predictions'][0]['description']
-        if strict and not perfect_match(name, description):
+        terms = result['predictions'][0]['terms']
+        if strict and not perfect_match(name, terms):
             raise LocationNotFoundError(name)
         req_loc = requests.get(
             GOOGLE_URL_DETAILS,
             params={'placeid': place_id, 'key':GOOGLE_MAPS_API_KEY})
         location = req_loc.json()['result']['geometry']['location']
+        location['description'] = description
         print 'Location found: {}, {}'.format(location['lng'], location['lat'])
         return location
 
@@ -519,12 +521,20 @@ def find_location_in_tags(tagged):
         location = current_location
     return ' '.join(location)
 
-def perfect_match(shorter, longer):
-    """Make sure the longer starts with the shorter, with some allowances."""
-    longer_simple = longer.strip(string.punctuation).lower()
-    shorter_simple = shorter.strip(string.punctuation).lower()
-    return longer_simple.startswith(shorter_simple)
-
+def perfect_match(requested, matched):
+    """Make sure the requested location full matches the matched one."""
+    requested_simple = requested.lower()
+    for char in string.punctuation:
+        requested_simple = requested_simple.replace(char, '')
+    for i in xrange(len(matched)):
+        # Add one term at a time, and compare the result against the request
+        check = ' '.join([term['value'] for term in matched[:i+1]]).lower()
+        for char in string.punctuation:
+            check = check.replace(char, '')
+        print check, requested_simple
+        if check == requested_simple:
+            return True
+    return False
 
 def aladin_url_image(coords):
     """Return the URL to get an Aladin preview image."""
