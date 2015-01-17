@@ -53,7 +53,7 @@ except KeyError:
     TWITTER_ACCESS_TOKEN_KEY = None
     TWITTER_ACCESS_TOKEN_SECRET = None
 
-WORDPRESS_ENDPOINT = 'http://whatsaboveme.wordpress.com/xmlrpc.php'
+WORDPRESS_ENDPOINT = 'https://whatsaboveme.wordpress.com/xmlrpc.php'
 try:
     WORDPRESS_PASSWORD = os.environ['WORDPRESS_PASSWORD']
 except KeyError:
