@@ -72,7 +72,8 @@ c = 299792.458
 class Bot(object):
     """The WhatsAboveMe twitterbot."""
 
-    def __init__(self, n_pix_image=400, arrow_offset=(179, 130)):
+    def __init__(self, n_pix_image=400, arrow_offset=(179, 130),
+                 comment_fraction=0.1):
         self.twitter_api = TwitterAPI(
             TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET,
             TWITTER_ACCESS_TOKEN_KEY, TWITTER_ACCESS_TOKEN_SECRET)
@@ -85,6 +86,7 @@ class Bot(object):
         except IOError:
             self.arrow = Image.open('arrow.png')
         self.arrow_offset = arrow_offset
+        self.comment_fraction = comment_fraction
         # The following list is in descending order of preference
         self.filternames = ['V', 'r', 'B', 'g', 'R', 'i', 'U', 'u', 'I', 'z']
         self.simbad = Simbad()
@@ -284,15 +286,18 @@ class Bot(object):
             elif text_simple == 'unfollow':
                 tweet_type = 'unfollow'
         elif tweet_type == 'other':
-            # We weren't mentioned in this tweet. Check it for locations that
-            # might be named.
-            response = requests.post(
-                TEXT_PROCESSING_URL,
-                data={'text': text_johnned, 'output': 'iob'})
-            tagged = json.loads(response.content)['text']
-            location = find_location_in_tags(tagged)
-            if location:
-                tweet_type = 'location'
+            # We weren't mentioned in this tweet.
+            # Don't check them all for locations, only a fraction.
+            # This is to avoid spamming people and using up API resources.
+            if np.random.rand() <= self.comment_fraction:
+                # Check it for locations that might be named.
+                response = requests.post(
+                    TEXT_PROCESSING_URL,
+                    data={'text': text_johnned, 'output': 'iob'})
+                tagged = json.loads(response.content)['text']
+                location = find_location_in_tags(tagged)
+                if location:
+                    tweet_type = 'location'
         # Now construct an appropriate response, depending on the tweet type
         result = {'type': tweet_type,
                   'time': self.read_time(tweet['created_at']),
